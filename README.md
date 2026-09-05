@@ -4,6 +4,14 @@
 
 ---
 
+## Overview
+
+Lenny Growth Assistant is a single-tenant FastAPI + Next.js application for
+asking citation-backed product and growth questions over ingested Lenny's
+Podcast transcripts. PostgreSQL with pgvector stores sessions and embeddings;
+threshold-based retrieval gates generation. Ollama is the default local
+provider, with optional Anthropic and OpenAI routing.
+
 ## Quick Start
 
 ### Prerequisites
@@ -22,7 +30,7 @@ cp .env.example .env
 ### 2. Start the Stack
 
 ```bash
-# Local (Ollama must be running separately — see note below)
+# Start PostgreSQL, backend, and frontend. Ollama may run separately.
 docker-compose up
 
 # With Ollama inside Docker (pulls model on first run, takes a few minutes)
@@ -49,6 +57,24 @@ docker-compose exec backend python scripts/ingest.py --transcripts-dir /app/tran
 
 ---
 
+## Architecture
+
+1. The Next.js client calls the FastAPI API through the typed client and reads
+   chat responses as Server-Sent Events.
+2. FastAPI persists the user turn, embeds the query, and retrieves ranked
+   transcript chunks above `RAG_SIMILARITY_THRESHOLD`.
+3. The selected provider streams a grounded response. If retrieval is empty,
+   the API returns the explicit insufficient-information response without
+   calling an LLM.
+4. Assistant messages, source metadata, and generated Markdown/HTML artifacts
+   are persisted in PostgreSQL.
+5. Markdown is rendered with `react-markdown`. HTML is sanitized with
+   DOMPurify and rendered in an iframe with `sandbox="allow-scripts"` and
+   without same-origin access.
+
+The backend is organized into API, provider, RAG, skills, and persistence
+layers; provider selection does not change the API or chat service contract.
+
 ## Environment Variables
 
 See [`.env.example`](.env.example) for all variables with descriptions.
@@ -64,6 +90,37 @@ Key settings:
 | `POSTGRES_PASSWORD` | `lenny_secret` | **Change for production** |
 
 Switching providers requires **no code changes** — set `DEFAULT_LLM_PROVIDER` and restart.
+Cloud providers are opt-in and require their corresponding key. The Ollama
+path does not require a cloud API key.
+
+## Ollama setup
+
+For a host-installed Ollama, use `OLLAMA_BASE_URL=http://host.docker.internal:11434`
+when the backend runs in Compose, then run:
+
+```bash
+ollama serve
+ollama pull llama3.2:3b
+```
+
+Alternatively, `docker-compose --profile ollama up` starts the Compose Ollama
+service and pulls the configured model. If Ollama is unavailable, health reports
+the component as unavailable and chat returns a safe provider error rather than
+an unhandled traceback.
+
+## Transcript ingestion
+
+Place `.md` or `.txt` files in `transcripts/`. Optional YAML frontmatter fields
+are `episode_title`, `guest_name`, and `publish_date`. Ingestion chunks the
+transcript with configured overlap, generates normalized embeddings, and
+replaces existing chunks for the same episode so reruns are idempotent:
+
+```bash
+docker-compose exec backend python scripts/ingest.py --transcripts-dir /app/transcripts
+# or POST /api/ingest with {"transcripts_dir": "/app/transcripts"}
+```
+
+## Local development
 
 ---
 
@@ -82,7 +139,33 @@ pytest -v
 pytest tests/test_api.py -v
 ```
 
+The backend tests use in-memory SQLite for API and retrieval coverage, while
+production uses PostgreSQL + pgvector. Frontend checks are:
+
+```bash
+cd frontend
+npm ci
+npm run type-check
+npm run build
+```
+
 ---
+
+## Docker Compose verification
+
+`docker-compose up` starts PostgreSQL/pgvector, the backend, and the frontend.
+The backend waits for the database health check; its own health check calls
+`GET /api/health`, and the frontend waits for backend health. Verify:
+
+```bash
+docker-compose ps
+curl http://localhost:8000/api/health
+curl http://localhost:3000
+```
+
+The health response distinguishes database, Ollama, and vector-index status.
+An unavailable Ollama service is expected when using the cloud provider or
+before local Ollama is started; it does not make the API crash.
 
 ## Health Check
 
@@ -139,7 +222,7 @@ lenny-growth-assistant/
 │   │   │   └── chat.py         ← POST /api/chat (SSE)
 │   │   ├── providers/      ← Phase 3: LLM routing
 │   │   ├── rag/            ← Phase 2: Retrieval
-│   │   └── skills/         ← Phase 4–5: Skills
+│   │   └── skills/         ← Phase 4: Ship 30 skill; Phase 5: artifacts
 │   └── tests/
 │       └── test_api.py
 └── frontend/
@@ -220,24 +303,48 @@ npm run dev
 
 ---
 
+## API overview
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| GET | `/api/health` | Component and provider health |
+| POST | `/api/sessions` | Create a persisted session |
+| GET | `/api/sessions` | List sessions |
+| GET | `/api/sessions/{id}` | Read session history and artifacts |
+| POST | `/api/chat` | Stream grounded chat over SSE |
+| POST | `/api/ingest` | Ingest a transcript directory |
+| GET | `/api/artifacts/{id}` | Retrieve a persisted artifact |
+
+API failures use structured `detail.error` and `detail.message` fields. Provider
+and ingestion internals are logged server-side but are not returned to clients.
+
+## Artifact behavior and security
+
+Provider responses may contain `<artifact type="markdown|html" title="...">`
+blocks. Supported blocks are extracted, persisted against the assistant
+message, included in the session response, and shown in the artifact viewer.
+Generated HTML is untrusted: DOMPurify removes unsafe markup before it enters
+the iframe, and the iframe has no same-origin, forms, popups, or top-navigation
+permission. Artifacts cannot access the parent application.
+
 ## Phase Status
 
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1 — Foundations | ✅ Complete | Docker, DB, health, sessions, chat echo, UI shell |
-| 2 — Ingestion | 🔜 Next | Transcript pipeline, pgvector, embeddings |
-| 3 — Providers | 🔜 | Ollama + cloud routing, grounded RAG chat |
-| 4 — Ship 30 | 🔜 | Essay skill |
-| 5 — Artifacts | 🔜 | Artifact viewer, sandboxed iframe |
-| 6 — Hardening | 🔜 | Logging, resilience, full test suite |
+| 2 — Ingestion | ✅ Complete | Transcript pipeline, pgvector, embeddings |
+| 3 — Providers | ✅ Complete | Ollama + cloud routing, grounded RAG chat |
+| 4 — Ship 30 | ✅ | Grounded essay prompt and validation |
+| 5 — Artifacts | ✅ Complete | Artifact viewer, sandboxed iframe |
+| 6 — Hardening | ✅ Complete | Logging, resilience, verification, handoff |
 
 ---
 
-## Demo Checklist (Phase 1)
+## Demo Checklist
 
 1. `docker-compose up` — all services green
 2. Open http://localhost:3000
-3. Type a message → receive SSE echo response
+3. Ingest transcripts, then ask a product/growth question → receive a grounded SSE response
 4. Refresh page → messages persist (session resumes)
 5. `curl http://localhost:8000/api/health` → structured JSON response
 6. Create second session — both appear in sidebar

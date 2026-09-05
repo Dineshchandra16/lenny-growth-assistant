@@ -54,6 +54,13 @@ class ArtifactResponse(BaseModel):
     created_at: datetime
 
 
+class ArtifactSummary(BaseModel):
+    """Artifact metadata included in a completed chat SSE event."""
+
+    artifact_type: Literal["markdown", "html"]
+    title: str | None = None
+
+
 class MessageResponse(BaseModel):
     """A single message as returned by the API."""
 

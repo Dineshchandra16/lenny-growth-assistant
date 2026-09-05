@@ -33,7 +33,36 @@
 
   /* Message bubble prose */
   .prose-chat {
-    @apply prose prose-sm prose-slate max-w-none;
+    @apply max-w-none text-sm leading-relaxed text-slate-700;
+  }
+  .prose-chat h1,
+  .prose-chat h2,
+  .prose-chat h3 {
+    @apply mb-2 mt-4 font-semibold text-slate-900;
+  }
+  .prose-chat h1 {
+    @apply text-xl;
+  }
+  .prose-chat h2 {
+    @apply text-lg;
+  }
+  .prose-chat h3 {
+    @apply text-base;
+  }
+  .prose-chat p {
+    @apply mb-2;
+  }
+  .prose-chat ul {
+    @apply mb-2 list-disc pl-5;
+  }
+  .prose-chat ol {
+    @apply mb-2 list-decimal pl-5;
+  }
+  .prose-chat a {
+    @apply text-brand-700 underline;
+  }
+  .prose-chat code {
+    @apply rounded bg-slate-100 px-1 py-0.5 text-xs;
   }
 
   /* Streaming cursor blink */

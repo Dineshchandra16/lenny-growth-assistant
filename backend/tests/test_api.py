@@ -34,9 +34,16 @@ from app.main import app
 # Test database — in-memory SQLite (no pgvector, so TranscriptChunk embedding
 # column is not tested here; that's Phase 2)
 # ─────────────────────────────────────────────────────────────────────────────
+from sqlalchemy.pool import StaticPool
+
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    echo=False,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestSessionLocal = async_sessionmaker(
     bind=test_engine,
     class_=AsyncSession,
@@ -249,4 +256,20 @@ async def test_chat_empty_message_rejected(client: AsyncClient):
         "/api/chat",
         json={"session_id": session_id, "message": ""},
     )
+    assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+@pytest.mark.asyncio
+async def test_ingest_rejects_missing_directory(client: AsyncClient):
+    resp = await client.post(
+        "/api/ingest",
+        json={"transcripts_dir": "directory-that-does-not-exist"},
+    )
+    assert resp.status_code == status.HTTP_400_BAD_REQUEST
+    assert resp.json()["detail"]["error"] == "invalid_transcripts_directory"
+
+
+@pytest.mark.asyncio
+async def test_artifact_rejects_invalid_identifier(client: AsyncClient):
+    resp = await client.get("/api/artifacts/not-a-uuid")
     assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY

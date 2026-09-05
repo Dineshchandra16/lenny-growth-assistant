@@ -144,12 +144,13 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 # ─────────────────────────────────────────────────────────────────────────────
 # Routers
 # ─────────────────────────────────────────────────────────────────────────────
-from app.api import health, sessions, chat, ingest  # noqa: E402  (after app created)
+from app.api import artifacts, health, sessions, chat, ingest  # noqa: E402  (after app created)
 
 app.include_router(health.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
 app.include_router(ingest.router, prefix="/api")
+app.include_router(artifacts.router, prefix="/api")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

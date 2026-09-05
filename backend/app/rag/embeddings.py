@@ -98,12 +98,11 @@ class EmbeddingService:
                     vec = vec / norm
                 return vec.tolist()
         except Exception as exc:
-            logger.error("Ollama embedding generation failed: %s", exc)
-            raise RuntimeError(f"Ollama embedding failed: {exc}") from exc
+            logger.error("Ollama embedding generation failed: %s", type(exc).__name__)
+            raise RuntimeError("Ollama embedding generation failed") from exc
 
 
 @lru_cache(maxsize=1)
 def get_embedding_service() -> EmbeddingService:
     """Return singleton EmbeddingService."""
     return EmbeddingService()
-

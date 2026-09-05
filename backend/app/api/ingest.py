@@ -48,6 +48,15 @@ async def trigger_ingest(
         if alt_path.exists():
             path = alt_path
 
+    if not path.exists() or not path.is_dir():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "invalid_transcripts_directory",
+                "message": "The transcripts directory does not exist.",
+            },
+        )
+
     try:
         stats = await ingest_transcripts_from_dir(path, db)
         log = logger.bind(
@@ -65,9 +74,11 @@ async def trigger_ingest(
             chunks_skipped=stats.chunks_skipped,
         )
     except Exception as exc:
-        logger.exception("ingest_failed", error=str(exc))
+        logger.exception("ingest_failed", error_type=type(exc).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={"error": "ingestion_failed", "message": str(exc)},
+            detail={
+                "error": "ingestion_failed",
+                "message": "Transcript ingestion failed. Check the server logs and try again.",
+            },
         )
-

@@ -1,14 +1,25 @@
-/**
- * components/Artifact/SandboxedIframe.tsx
- * ─────────────────────────────────────────
- * Phase 5 stub — HTML artifact sandboxed iframe implemented in Phase 5.
- *
- * Security model (Phase 5):
- * - Content sanitized with DOMPurify before injection
- * - sandbox="allow-scripts" (no allow-same-origin)
- * - Cannot read parent page cookies, storage, or DOM
- */
+"use client";
 
-export default function SandboxedIframe() {
-  return null; // Phase 5
+import DOMPurify from "dompurify";
+
+interface SandboxedIframeProps {
+  html: string;
+  title?: string;
+}
+
+export default function SandboxedIframe({ html, title = "HTML artifact" }: SandboxedIframeProps) {
+  const sanitizedHtml = DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    FORBID_ATTR: ["srcdoc"],
+  });
+
+  return (
+    <iframe
+      title={title}
+      srcDoc={sanitizedHtml}
+      sandbox="allow-scripts"
+      className="h-96 w-full rounded-lg border border-slate-200 bg-white"
+      referrerPolicy="no-referrer"
+    />
+  );
 }

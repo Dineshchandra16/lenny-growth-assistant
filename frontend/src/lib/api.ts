@@ -38,6 +38,11 @@ export interface MessageData {
   created_at: string;
 }
 
+export interface ArtifactSummary {
+  artifact_type: "markdown" | "html";
+  title?: string;
+}
+
 export interface SessionData {
   id: string;
   title: string;
@@ -138,6 +143,11 @@ export const api = {
   /** GET /api/sessions/{id} */
   getSession(sessionId: string): Promise<SessionData> {
     return safeFetch<SessionData>(`${API_BASE}/sessions/${sessionId}`);
+  },
+
+  /** GET /api/artifacts/{id} */
+  getArtifact(artifactId: string): Promise<ArtifactData> {
+    return safeFetch<ArtifactData>(`${API_BASE}/artifacts/${artifactId}`);
   },
 
   /**

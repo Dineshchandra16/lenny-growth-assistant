@@ -32,9 +32,16 @@ from app.rag.embeddings import EmbeddingService, get_embedding_service
 from app.rag.retriever import TranscriptRetriever
 from scripts.ingest import ingest_transcripts_from_dir
 
+from sqlalchemy.pool import StaticPool
+
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
-test_engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    echo=False,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 TestSessionLocal = async_sessionmaker(
     bind=test_engine,
     class_=AsyncSession,

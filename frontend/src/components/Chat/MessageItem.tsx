@@ -12,6 +12,7 @@
 "use client";
 
 import { type MessageData, type SourceCitation } from "@/lib/api";
+import ArtifactViewer from "../Artifact/ArtifactViewer";
 
 interface MessageItemProps {
   message: MessageData;
@@ -97,6 +98,10 @@ export default function MessageItem({
             </div>
           </div>
         )}
+
+        {!isUser && message.artifacts?.map((artifact) => (
+          <ArtifactViewer key={artifact.id} artifact={artifact} />
+        ))}
 
         {/* Timestamp */}
         <p className={`mt-1.5 text-right text-xs opacity-50 tabular-nums`}>

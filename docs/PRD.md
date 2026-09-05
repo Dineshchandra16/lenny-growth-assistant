@@ -124,9 +124,9 @@
 - [ ] Cloud provider works when API key is set
 
 ### Phase 4 — Ship 30 for 30 Skill
-- [ ] Essay ~1,250 words, follows Ship 30 structure
-- [ ] All claims cite retrieved chunks
-- [ ] Word count / structure validated before returning
+- [x] Essay ~1,250 words, follows Ship 30 structure
+- [x] All claims cite retrieved chunks
+- [x] Word count / structure validated before returning
 
 ### Phase 5 — Artifact Generation & Viewer
 - [ ] Markdown artifact renders via react-markdown

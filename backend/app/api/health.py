@@ -34,8 +34,8 @@ async def _check_database(db: AsyncSession) -> ComponentStatus:
         await db.execute(text("SELECT 1"))
         return ComponentStatus(status="ok")
     except Exception as exc:
-        logger.warning("DB health check failed: %s", exc)
-        return ComponentStatus(status="unavailable", detail=str(exc))
+        logger.warning("db_health_check_failed", extra={"error_type": type(exc).__name__})
+        return ComponentStatus(status="unavailable", detail="Database query failed")
 
 
 async def _check_ollama() -> ComponentStatus:
@@ -51,6 +51,7 @@ async def _check_ollama() -> ComponentStatus:
                 detail=f"Ollama returned HTTP {resp.status_code}",
             )
     except Exception as exc:
+        logger.warning("ollama_health_check_failed", extra={"error_type": type(exc).__name__})
         return ComponentStatus(
             status="unavailable",
             detail=f"Ollama unreachable at {settings.ollama_base_url}: {type(exc).__name__}",
@@ -76,7 +77,8 @@ async def _check_vector_index(db: AsyncSession) -> ComponentStatus:
             )
         return ComponentStatus(status="ok", detail=f"{count} chunks indexed")
     except Exception as exc:
-        return ComponentStatus(status="unavailable", detail=str(exc))
+        logger.warning("vector_health_check_failed", extra={"error_type": type(exc).__name__})
+        return ComponentStatus(status="unavailable", detail="Vector index query failed")
 
 
 @router.get("/health", response_model=HealthResponse, tags=["ops"])
